@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SEA Value Proposition - Hierarchical Network</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', 'Roboto', 'Arial', sans-serif; /* Modernized Font Pairing */
+            margin: 0;
+            overflow: hidden;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Mobile-First Header */
+        header {
+            background-color: #2D2D2D;
+            color: white;
+            padding: 10px 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-bottom: 4px solid #D93900;
+            z-index: 100;
+            display: flex;
+            flex-wrap: wrap; 
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 20px; 
+            font-family: 'Georgia', serif; /* Keep serif for headers */
+            font-weight: normal;
+            flex-shrink: 0;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* Mobile Optimized Buttons */
+        button {
+            background-color: #464646;
+            color: white;
+            border: 1px solid #7D7D7D;
+            padding: 8px 16px; /* Larger padding for touch */
+            font-family: 'Arial', sans-serif;
+            font-size: 14px; /* Slightly larger text */
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+            min-height: 44px; /* Minimum touch target size */
+            touch-action: manipulation; /* Improves touch response */
+        }
+
+        button:hover, button:active {
+            background-color: #D93900;
+            border-color: #D93900;
+        }
+
+        #tree-container {
+            width: 100%;
+            flex: 1;
+            position: relative;
+            background-color: #fff;
+            overflow: hidden;
+        }
+
+        /* Onboarding Hint */
+        #onboarding-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            background-color: rgba(45, 45, 45, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 16px;
+            pointer-events: none; /* Let clicks pass through */
+            opacity: 1;
+            transition: opacity 0.5s ease;
+            z-index: 50;
+            box-shadow: 0 4px 15px rgba(217, 57, 0, 0.3);
+            animation: hint-pulse 2s infinite;
+            white-space: nowrap; /* Prevent breaking on small screens */
+        }
+
+        @keyframes hint-pulse {
+            0% { transform: translate(-50%, -100%) scale(1); }
+            50% { transform: translate(-50%, -100%) scale(1.05); }
+            100% { transform: translate(-50%, -100%) scale(1); }
+        }
+
+        /* Info Panel */
+        #info-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.95); /* Slight Glassmorphism base */
+            backdrop-filter: blur(10px); /* Glassmorphism blur */
+            border-top: 1px solid #D93900;
+            padding: 15px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 200;
+            box-sizing: border-box;
+            transform: translateY(100%); 
+            max-height: 50vh; /* Allow slightly more space on mobile */
+            overflow-y: auto;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #info-panel.visible {
+            transform: translateY(0);
+        }
+
+        #panel-inner {
+            transition: opacity 0.2s ease-out;
+            opacity: 1;
+        }
+        
+        #panel-inner.faded {
+            opacity: 0;
+        }
+
+        #info-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #D93900;
+            font-family: 'Georgia', serif;
+            padding-right: 30px; 
+            word-wrap: break-word; 
+            line-height: 1.4;
+        }
+
+        /* Interactive Breadcrumbs */
+        .breadcrumb-item {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .breadcrumb-item:hover {
+            text-decoration: underline;
+            color: #D93900 !important;
+        }
+
+        #info-panel p {
+            margin: 0;
+            font-size: 14px;
+            color: #2D2D2D;
+            font-family: 'Helvetica Neue', 'Arial', sans-serif;
+            line-height: 1.5;
+        }
+        
+        #info-panel ul {
+            padding-left: 20px;
+            margin: 5px 0;
+        }
+        
+        #info-panel li {
+            margin-bottom: 8px;
+            color: #2D2D2D;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        /* KPI Tables & Visuals */
+        .kpi-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Helvetica Neue', 'Arial', sans-serif;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        .kpi-table th {
+            background-color: #2D2D2D;
+            color: white;
+            text-align: left;
+            padding: 8px;
+            font-weight: normal;
+            border-bottom: 2px solid #D93900;
+        }
+
+        .kpi-table td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            color: #2D2D2D;
+            vertical-align: middle;
+        }
+
+        .kpi-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .highlight-text {
+            color: #D93900;
+            font-weight: bold;
+        }
+
+        /* KPI Bars */
+        .bar-container {
+            width: 80px; /* Slightly smaller for mobile safety */
+            height: 8px;
+            background-color: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .bar-fill {
+            height: 100%;
+            background-color: #D93900;
+            border-radius: 4px;
+        }
+        .val-text {
+            vertical-align: middle;
+        }
+
+        #close-panel {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 28px; /* Larger close button */
+            color: #7D7D7D;
+            cursor: pointer;
+            padding: 10px; /* Touch padding */
+            line-height: 0.5;
+            z-index: 201; 
+        }
+
+        /* SVG Styles */
+        .node {
+            cursor: pointer;
+        }
+
+        .node path {
+            fill: #fff;
+            stroke: #464646;
+            stroke-width: 2px;
+            transition: stroke-width 0.3s ease; 
+        }
+
+        .node path.active {
+            stroke: #D93900; 
+            stroke-width: 3px;
+            fill: #FFF5F0;
+        }
+
+        .node rect.leaf-border {
+            fill: white;
+            stroke: #D93900;
+            stroke-width: 0.5px; 
+            rx: 6; 
+            ry: 6;
+        }
+        
+        .node rect.leaf-border.active {
+            stroke-width: 2px;
+            fill: #FFF5F0;
+        }
+        
+        @keyframes radar-wave {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        .radar-pulse {
+            fill: #D93900;
+            stroke: none;
+            opacity: 0;
+            pointer-events: none;
+            transform-box: fill-box;
+            transform-origin: center;
+        }
+
+        .radar-pulse.active {
+            animation: radar-wave 2s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .node text {
+            font-size: 12px;
+            font-family: 'Helvetica Neue', 'Arial', sans-serif;
+            pointer-events: auto;
+            cursor: pointer;
+            user-select: none;
+            fill: #2D2D2D;
+        }
+
+        .link {
+            fill: none;
+            stroke: #ccc; 
+            stroke-width: 1.5px; 
+            opacity: 0.6;
+            transition: stroke-width 0.3s;
+        }
+        
+        /* Link Flow Animation Class */
+        .link.drawing {
+            animation: dash 1s linear forwards;
+        }
+        
+        @keyframes dash {
+            from { stroke-dashoffset: 1000; }
+            to { stroke-dashoffset: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>SEA Value Proposition</h1>
+        <div class="header-controls">
+            <button id="expand-btn">Expand All</button>
+            <button id="collapse-btn">Collapse All</button>
+            <button id="reset-btn">Reset View</button>
+        </div>
+    </header>
+
+    <div id="onboarding-hint">Click a node to explore</div>
+
+    <div id="info-panel">
+        <button id="close-panel">×</button>
+        <div id="panel-inner">
+            <h3 id="panel-title">Title</h3>
+            <div id="panel-content">Description goes here.</div>
+        </div>
+    </div>
+    
+    <div id="tree-container"></div>
+
+    <script>
+        const treeData = {
+            "name": "Value Proposition",
+            "description": "This is a Value Proposition mind map for a Senior Executive Advisor in PwC Cities Sector",
+            "type": "root",
+            "children": [
+                {
+                    "name": "Business Performance",
+                    "type": "level1",
+                    "children": [
+                        {
+                            "name": "REVENUE",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Revenue Generated",
+                                    "description": "Total mandate fees originated, influenced, or significantly contributed to closure",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Built client base 10→60+ through systematic origination", "type": "leaf" },
+                                                { "name": "32x revenue growth (AED 20M→650M)", "type": "leaf" },
+                                                { "name": "National Projects Office Advisory Board access", "type": "leaf" },
+                                                { "name": "Managed PwC, Deloitte, Strategy&, EY as client", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Originate Cities sector opportunities through government advisory access", "type": "leaf" },
+                                                { "name": "Shape mandate requirements pre-RFP", "type": "leaf" },
+                                                { "name": "Provide differentiation in competitive pursuits", "type": "leaf" },
+                                                { "name": "Leverage relationship capital for sole-source opportunities", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf", 
+                                            "tableData": [
+                                                { "item": "Signed Mandates", "unit": "Number", "value": "[target number]" },
+                                                { "item": "Total Closed Revenue", "unit": "Million USD", "value": "[$ range]M" },
+                                                { "item": "Mix of Competitive Wins and Sole-Source Engagements", "unit": "Percentage", "value": "% Mix" },
+                                                { "item": "Contribution to Cities Sector Revenue Growth", "unit": "Percentage", "value": "[percentage]%" }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "New Client Acquisition",
+                                    "description": "Net-new client organizations brought to PwC with no prior engagement history",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "6x client expansion from systematic relationship development", "type": "leaf" },
+                                                { "name": "Track record across government, quasi-gov, private sector", "type": "leaf" },
+                                                { "name": "5 board positions demonstrating relationship building", "type": "leaf" },
+                                                { "name": "Family office representation requiring investor acquisition", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Develop KSA government/quasi-gov relationships", "type": "leaf" },
+                                                { "name": "Build reputation as thought leader", "type": "leaf" },
+                                                { "name": "Activate professional network (boards, advisory)", "type": "leaf" },
+                                                { "name": "Target strategic accounts aligned with capabilities", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf",
+                                            "tableData": [
+                                                { "item": "Net-new client organizations", "unit": "Number", "value": "[target number]" },
+                                                { "item": "Clients that are government or quasi-government entities", "unit": "Percentage", "value": "[percentage]%" },
+                                                { "item": "Clients conversion rate", "unit": "Percentage", "value": "[percentage]%" }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "Client Retention & Expansion",
+                                    "description": "Revenue growth from existing PwC clients through cross-selling, account expansion, repeat mandates",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Portfolio diversification driving 60% of revenue growth", "type": "leaf" },
+                                                { "name": "Multiple phases delivered across programs (Sir Bani Yas, etc)", "type": "leaf" },
+                                                { "name": "Repeat business track record across organizations", "type": "leaf" },
+                                                { "name": "Evaluated 40+ opportunities for cross-selling", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Identify cross-selling opportunities", "type": "leaf" },
+                                                { "name": "Design integrated multi-LoS solutions", "type": "leaf" },
+                                                { "name": "Maintain senior relationships", "type": "leaf" },
+                                                { "name": "Quality delivery oversight", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf",
+                                            "tableData": [
+                                                { "item": "PwC Cities clients expanding to additional LoS", "unit": "Percent (%)", "value": "[percentage]%" },
+                                                { "item": "Follow-on mandates from satisfied clients", "unit": "Count", "value": "[target number]" },
+                                                { "item": "Revenue from account expansion activities", "unit": "USD (Millions)", "value": "[$ range]M" },
+                                                { "item": "Average client lifecycle value increase", "unit": "Percent (%)", "value": "[percentage]%" }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "Pipeline Development",
+                                    "description": "Value of qualified opportunities in active pursuit or development stages",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "National Projects Office participation (early visibility)", "type": "leaf" },
+                                                { "name": "Board positions create pipeline identification opportunities", "type": "leaf" },
+                                                { "name": "Systematic opportunity evaluation framework (40+ assessed)", "type": "leaf" },
+                                                { "name": "Understanding of government budget cycles", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Systematic relationship cultivation", "type": "leaf" },
+                                                { "name": "Early engagement on emerging programs", "type": "leaf" },
+                                                { "name": "Qualify opportunities (fit, win probability)", "type": "leaf" },
+                                                { "name": "Collaborate with LoS leaders on prioritization", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf",
+                                            "tableData": [
+                                                { "item": "Qualified pipeline value maintained", "unit": "USD Millions", "value": "[$ range]M" },
+                                                { "item": "Opportunities in active pursuit at any time", "unit": "Count", "value": "[target number]" },
+                                                { "item": "Average opportunity size", "unit": "USD Millions", "value": "[$ range]M" },
+                                                { "item": "Pipeline-to-revenue conversion rate", "unit": "Percentage", "value": "[percentage]%" }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "PROFITABILITY",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Margin Contribution",
+                                    "description": "Revenue generated minus cost to deliver; net profitability of originated mandates",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "P&L responsibility with margin accountability (8% improvement)", "type": "leaf" },
+                                                { "name": "Procurement transformation reducing costs", "type": "leaf" },
+                                                { "name": "30 years operational delivery experience", "type": "leaf" },
+                                                { "name": "Negotiated contracts as CEO", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Shape scopes for capabilities (higher margin)", "type": "leaf" },
+                                                { "name": "Operational viability review", "type": "leaf" },
+                                                { "name": "Client relationship leverage", "type": "leaf" },
+                                                { "name": "Quality oversight to prevent scope creep", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf",
+                                            "tableData": [
+                                                { "item": "Average margin on originated mandates", "unit": "Percentage (%)", "value": "[percentage]%" },
+                                                { "item": "Mandates delivered at or above target margin", "unit": "Count", "value": "[target number]" },
+                                                { "item": "Potential loss-making pursuits avoided", "unit": "USD (Millions)", "value": "[$ range]M" }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "Utilization / Leverage",
+                                    "description": "Efficient deployment of team resources; ratio of billable staff to senior oversight",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "PMO establishment with resource optimization frameworks", "type": "leaf" },
+                                                { "name": "Multi-project coordination across dispersed developments", "type": "leaf" },
+                                                { "name": "20% overhead reduction through operational efficiency", "type": "leaf" },
+                                                { "name": "Resource planning across AED 15B+ portfolio", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Solution design optimizing staff mix", "type": "leaf" },
+                                                { "name": "Implementation planning support", "type": "leaf" },
+                                                { "name": "PMO frameworks for efficient coordination", "type": "leaf" },
+                                                { "name": "Inform scoping to aid utilization", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf",
+                                            "tableData": [
+                                                { "item": "Mandates scoped with average utilization target", "unit": "Percentage (%)", "value": "[percentage]" },
+                                                { "item": "Resource planning input on major pursuits", "unit": "Number", "value": "[target number]" },
+                                                { "item": "Reduction in delivery FTEs", "unit": "Percentage (%)", "value": "[percentage]" }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "EFFECTIVENESS",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Win Rates",
+                                    "description": "Percentage of competitive pursuits converted to signed mandates",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "CEO experience presenting to Boards/Gov officials", "type": "leaf" },
+                                                { "name": "Track record delivering what clients are trying to build", "type": "leaf" },
+                                                { "name": "National program advisory credibility (Jordan, Qatar, UAE)", "type": "leaf" },
+                                                { "name": "Client-side perspective from managing Big 4 selections", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Operational credibility differentiates PwC", "type": "leaf" },
+                                                { "name": "Client intelligence on decision criteria", "type": "leaf" },
+                                                { "name": "Solution design for real constraints", "type": "leaf" },
+                                                { "name": "Relationship access for pre-positioning", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf",
+                                            "tableData": [
+                                                { "item": "Win rate on pursuits with SEA involvement", "unit": "Percentage (%)", "value": "[percentage]" },
+                                                { "item": "Competitive wins where operational credibility was differentiator", "unit": "Number", "value": "[target number]" },
+                                                { "item": "Finalist rate on major government RFPs", "unit": "Percentage (%)", "value": "[percentage]" }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "name": "Client Satisfaction",
+                                    "description": "Net Promoter Score, client feedback, willingness to provide references, testimonials",
+                                    "type": "level3",
+                                    "children": [
+                                        {
+                                            "name": "Competencies",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "6x client expansion demonstrates high satisfaction", "type": "leaf" },
+                                                { "name": "Multiple board positions indicating trusted advisor status", "type": "leaf" },
+                                                { "name": "Repeat engagements across organizations over years", "type": "leaf" },
+                                                { "name": "Track record of client advocacy and referrals", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Contribution",
+                                            "type": "level4",
+                                            "children": [
+                                                { "name": "Senior relationship management for resolution", "type": "leaf" },
+                                                { "name": "Quality oversight for implementable recommendations", "type": "leaf" },
+                                                { "name": "Stakeholder navigation in complex environments", "type": "leaf" },
+                                                { "name": "Post-delivery relationship maintenance", "type": "leaf" }
+                                            ]
+                                        },
+                                        {
+                                            "name": "Outcomes / KPIs",
+                                            "type": "leaf",
+                                            "tableData": [
+                                                { "item": "Client NPS score", "unit": "Score", "value": "[target score]" },
+                                                { "item": "Clients willing to serve as references", "unit": "Percentage (%)", "value": "[percentage]%" },
+                                                { "item": "Testimonials or case study participations secured", "unit": "Count", "value": "[target number]" },
+                                                { "item": "Zero client escalations attributable to SEA oversight", "unit": "Count", "value": "0" }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "BUs Support",
+                    "type": "level1",
+                    "children": [
+                        {
+                            "name": "Strategy & Transformation (S&T)",
+                            "description": "Organizational transformation, operational excellence, strategic repositioning.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Validate transformation roadmaps for implementation realism", "type": "leaf" },
+                                        { "name": "Brief teams on client organizational dynamics, decision culture", "type": "leaf" },
+                                        { "name": "Provide operational credibility (32x growth, restructuring)", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "CEO transformation: AED 20M→650M (32x), 8% margin gain", "type": "leaf" },
+                                        { "name": "Organizational transformation: project contractor to strategy consultancy", "type": "leaf" },
+                                        { "name": "Evaluated 40+ opportunities with Board-approved business cases", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Digital & Cyber (D&C)",
+                            "description": "Digital transformation, technology implementation, PropTech solutions.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Validate technology recommendations for adoption complexity", "type": "leaf" },
+                                        { "name": "Quality-check digital roadmaps for organizational readiness gaps", "type": "leaf" },
+                                        { "name": "Scale note: Project-level technology experience; city-scale informed only", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "CNTRL+ platform (AI-powered SaaS) from concept through deployment", "type": "leaf" },
+                                        { "name": "Implemented BIM, Digital Twins, IoT, Generative Design across portfolio", "type": "leaf" },
+                                        { "name": "Technology transformation enabling 32x organizational scaling", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Risk",
+                            "description": "Program risk management, governance frameworks, operational risk.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Review risk assessments for operational risk gaps", "type": "leaf" },
+                                        { "name": "Validate governance frameworks for operational practicality", "type": "leaf" },
+                                        { "name": "Provide risk quantification benchmarks from AED 15B+ portfolio", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Multi-project risk management: AED 15B+ portfolio with accountability", "type": "leaf" },
+                                        { "name": "PMO establishment: governance frameworks, risk controls, compliance", "type": "leaf" },
+                                        { "name": "Board risk oversight across multiple organizations", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Management Consulting (MC)",
+                            "description": "Operational excellence, procurement transformation, performance improvement.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Validate efficiency improvement recommendations against operational data", "type": "leaf" },
+                                        { "name": "Review procurement transformation for change management realism", "type": "leaf" },
+                                        { "name": "Quality-check performance business cases with P&L perspective", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Operational transformation: 20% overhead reduction, 8% margin improvement", "type": "leaf" },
+                                        { "name": "Scaled 10→60+ clients through process optimization", "type": "leaf" },
+                                        { "name": "P&L responsibility: AED 650M revenue with accountability", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Cities Sector Support",
+                    "type": "level1",
+                    "children": [
+                        {
+                            "name": "Strategic Planning & Policy",
+                            "description": "National urban strategy, policy frameworks, economic development, investment attraction, governance design.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "National urban strategy from National Projects Office & housing programs", "type": "leaf" },
+                                        { "name": "Urban policy and regulatory frameworks from municipality advisory", "type": "leaf" },
+                                        { "name": "Economic development strategy leveraging 32x growth execution", "type": "leaf" },
+                                        { "name": "Governance design QA against PMO and restructuring experience", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "National Projects Office (Abu Dhabi); national housing (Jordan, Qatar, UAE)", "type": "leaf" },
+                                        { "name": "Jordan housing: policy development, PPP framework, regulatory structuring", "type": "leaf" },
+                                        { "name": "Portfolio diversification (60% of growth); 40+ opportunity evaluations", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Megaproject & Real Estate Advisory",
+                            "description": "Feasibility, master planning, institutional setup, commercial viability, partner structuring, DMO, portfolio strategy, ESG, PPP.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Feasibility and commercial viability using Board-approved methodology", "type": "leaf" },
+                                        { "name": "Master planning for large-scale developments (Sir Bani Yas, etc)", "type": "leaf" },
+                                        { "name": "Institutional frameworks: PPP structuring, multi-stakeholder governance", "type": "leaf" },
+                                        { "name": "DMO establishment from PMO setup experience", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Sir Bani Yas (70 sq km): concept, feasibility, master plan, operating model", "type": "leaf" },
+                                        { "name": "AED 15B+ portfolio: business cases, commercial modeling, investment structuring", "type": "leaf" },
+                                        { "name": "PPP framework (Jordan); family office structuring; SEE Holding ESG", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Infrastructure & Capital Projects",
+                            "description": "Infrastructure policy, development/procurement, asset management, construction advisory, development connectivity.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Infrastructure development and procurement from transformation delivery", "type": "leaf" },
+                                        { "name": "Asset/facilities management framework design using portfolio O&M", "type": "leaf" },
+                                        { "name": "Construction advisory: cost efficiency, value engineering, quality control", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Procurement transformation; construction management (15 years)", "type": "leaf" },
+                                        { "name": "National housing infrastructure coordination; National Projects Office", "type": "leaf" },
+                                        { "name": "Portfolio asset management with O&M frameworks; multi-project delivery", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Technology-Enabled Urban Solutions",
+                            "description": "Smart city platforms (data integration, AI/analytics, digital twins), data-powered planning.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Technology adoption validation and complexity assessment (CNTRL+)", "type": "leaf" },
+                                        { "name": "Digital twin advisory from project-scale BIM/Digital Twin implementation", "type": "leaf" },
+                                        { "name": "Resource optimization and predictive analytics from portfolio planning", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "CNTRL+ (AI-powered SaaS): data architecture, analytics, predictive capabilities", "type": "leaf" },
+                                        { "name": "BIM, Digital Twins, IoT, Generative Design implementation", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Destination & Cultural Development",
+                            "description": "Cultural districts, heritage tourism, mega resort entertainment, destination activation.",
+                            "type": "level2",
+                            "children": [
+                                {
+                                    "name": "Support / Enhancement",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Destination strategy and master planning from Sir Bani Yas (70 sq km)", "type": "leaf" },
+                                        { "name": "Operating model design: governance, phasing, revenue models", "type": "leaf" },
+                                        { "name": "Mega resort advisory from hospitality diversification and destination planning", "type": "leaf" },
+                                        { "name": "Activation strategy with operational feasibility perspective", "type": "leaf" }
+                                    ]
+                                },
+                                {
+                                    "name": "Relevant Experience",
+                                    "type": "level3",
+                                    "children": [
+                                        { "name": "Sir Bani Yas (70 sq km): comprehensive planning, master plan, operating model", "type": "leaf" },
+                                        { "name": "National Projects Office: sports arenas, expo initiatives, national programs", "type": "leaf" },
+                                        { "name": "Portfolio diversification into hospitality; multiple destination concepts", "type": "leaf" }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // --- Data Transformation: Convert lowest leaf nodes to "bullets" data ---
+        // This function preprocesses the treeData to remove the visual "leaf" nodes
+        // and instead store their text in the parent node's "bullets" array.
+        function preprocessData(node) {
+            if (node.children) {
+                // Check if children are simple text leaves (type 'leaf' AND no tableData)
+                const areLeaves = node.children.length > 0 && node.children.every(c => c.type === 'leaf' && !c.tableData);
+                
+                if (areLeaves) {
+                    // Extract names to bullets array
+                    node.bullets = node.children.map(c => c.name);
+                    // Remove children so D3 doesn't draw them
+                    node.children = null; 
+                    // Optional: You can change the type of this node to indicate it's now a terminal node
+                    // node.type = 'content-node'; 
+                } else {
+                    // Recurse down
+                    node.children.forEach(preprocessData);
+                }
+            }
+        }
+        
+        // Execute transformation
+        preprocessData(treeData);
+
+        // --- D3.js Setup ---
+
+        const container = document.getElementById("tree-container");
+        
+        // --- Responsive Logic ---
+        function getDimensions() {
+            const isMobile = container.clientWidth < 768; // Mobile Breakpoint
+            const sideMargin = isMobile ? 20 : 120;
+            return {
+                isMobile,
+                margin: {top: 20, right: sideMargin, bottom: 20, left: sideMargin},
+                horizontalSpacing: isMobile ? 150 : 220
+            };
+        }
+        
+        let config = getDimensions();
+        let width = container.clientWidth - config.margin.left - config.margin.right;
+        let height = container.clientHeight - config.margin.top - config.margin.bottom;
+
+        const zoom = d3.zoom().on("zoom", (event) => {
+            g.attr("transform", event.transform);
+        });
+
+        const svgRoot = d3.select("#tree-container").append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .call(zoom)
+            .on("dblclick.zoom", null); 
+            
+        // Dismiss hint on any click
+        svgRoot.on("click", () => {
+            const hint = document.getElementById('onboarding-hint');
+            if(hint) hint.style.opacity = 0;
+        });
+
+        const svg = svgRoot.append("g")
+            .attr("transform", "translate(" + config.margin.left + "," + config.margin.top + ")");
+            
+        const g = svg.append("g");
+
+        // Info Panel logic
+        const infoPanel = document.getElementById('info-panel');
+        const panelInner = document.getElementById('panel-inner');
+        const panelTitle = document.getElementById('panel-title');
+        const panelContent = document.getElementById('panel-content');
+        const closePanelBtn = document.getElementById('close-panel');
+
+        function generateTableHtml(tableData) {
+            if (!tableData || tableData.length === 0) return "";
+            
+            let html = '<table class="kpi-table">';
+            html += '<thead><tr><th>KPI Item</th><th>Unit</th><th>Value</th></tr></thead>';
+            html += '<tbody>';
+            
+            tableData.forEach(row => {
+                const highlight = (text) => {
+                    return text.replace(/(\[.*?\])/g, '<span class="highlight-text">$1</span>');
+                };
+                
+                let valDisplay = highlight(row.value);
+                
+                // KPI Visualization Check
+                let isPercentage = false;
+                let numVal = 0;
+                
+                // Heuristic to detect percentage: Unit contains 'Percent' or Value contains '%'
+                if ((row.unit && row.unit.toLowerCase().includes('percent')) || (row.value && row.value.includes('%'))) {
+                    const match = row.value.match(/(\d+)/);
+                    if (match) {
+                        numVal = parseInt(match[0]);
+                        if (!isNaN(numVal)) {
+                            isPercentage = true;
+                        }
+                    }
+                    if (row.value.includes('[percentage]')) {
+                        isPercentage = true; 
+                        numVal = 50; // Demo value
+                    }
+                }
+
+                if (isPercentage) {
+                    valDisplay = `<div class="bar-container" title="${row.value}">
+                                    <div class="bar-fill" style="width: ${numVal}%"></div>
+                                  </div> <span class="val-text">${valDisplay}</span>`;
+                }
+
+                html += `<tr>
+                    <td>${highlight(row.item)}</td>
+                    <td>${row.unit}</td>
+                    <td>${valDisplay}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            return html;
+        }
+        
+        function generateListHtml(bullets) {
+            if (!bullets || bullets.length === 0) return "";
+            let html = '<ul>';
+            bullets.forEach(b => {
+                html += `<li>${b}</li>`;
+            });
+            html += '</ul>';
+            return html;
+        }
+
+        // Updated Function: Handle showing info for ALL node types including new bullets
+        function showInfoPanel(d) {
+            // Dismiss hint if visible
+            const hint = document.getElementById('onboarding-hint');
+            if(hint) hint.style.opacity = 0;
+
+            let content = "";
+            let hasContent = false;
+
+            if (d.data.tableData && d.data.tableData.length > 0) {
+                // Case 1: KPI Table
+                content = generateTableHtml(d.data.tableData);
+                hasContent = true;
+            } else if (d.data.bullets && d.data.bullets.length > 0) {
+                // Case 2: Bullet Points (Converted Leaves)
+                content = generateListHtml(d.data.bullets);
+                hasContent = true;
+            } else if (d.data.description && d.data.description.trim() !== "") {
+                // Case 3: Description (Category nodes)
+                content = `<p>${d.data.description}</p>`;
+                hasContent = true;
+            } else if (d.data.type === 'leaf' && d.data.name && d.data.name.trim() !== "") {
+                // Case 4: Standard leaf (fallback)
+                content = `<p>${d.data.name}</p>`;
+                hasContent = true;
+            }
+
+            // Only show panel if there is content
+            if (hasContent) {
+                
+                // Helper to build content DOM
+                const buildContent = () => {
+                    // Generate Breadcrumbs
+                    let breadcrumbs = [];
+                    let current = d;
+                    // Store reference to node objects for clicking
+                    let crumbNodes = []; 
+                    
+                    while (current) {
+                        breadcrumbs.unshift(current.data.name);
+                        crumbNodes.unshift(current);
+                        current = current.parent;
+                    }
+                    
+                    // Clear and rebuild title with gradient
+                    panelTitle.innerHTML = "";
+                    
+                    breadcrumbs.forEach((text, index) => {
+                        const span = document.createElement("span");
+                        span.textContent = text;
+                        span.className = "breadcrumb-item";
+                        
+                        // Interactive Click
+                        const targetNode = crumbNodes[index];
+                        span.onclick = (e) => {
+                            e.stopPropagation(); // Prevent panel closing logic if needed
+                            // Trigger selection of this node
+                            handleNodeClick(targetNode);
+                        };
+                        
+                        // Color Interpolation: Start at Gray (#888) -> End at PwC Orange (#D93900)
+                        if (breadcrumbs.length === 1) {
+                            span.style.color = "#D93900";
+                        } else {
+                            // Calculate t from 0 to 1 based on position in breadcrumb
+                            const t = index / (breadcrumbs.length - 1);
+                            span.style.color = d3.interpolateRgb("#888888", "#D93900")(t);
+                        }
+                        
+                        // Make the last item bold for emphasis
+                        if (index === breadcrumbs.length - 1) {
+                            span.style.fontWeight = "bold";
+                        }
+
+                        panelTitle.appendChild(span);
+
+                        // Add separator if not last
+                        if (index < breadcrumbs.length - 1) {
+                            const sep = document.createElement("span");
+                            sep.innerHTML = " / ";
+                            sep.style.color = "#ddd"; // Very light gray separator
+                            sep.style.margin = "0 6px";
+                            sep.style.fontWeight = "normal";
+                            panelTitle.appendChild(sep);
+                        }
+                    });
+                    
+                    panelContent.innerHTML = content;
+                };
+
+                if (infoPanel.classList.contains('visible')) {
+                     // Panel is already open: Perform "Fluid Morph"
+                     
+                     // 1. Lock current height to prevent jump
+                     const currentHeight = infoPanel.offsetHeight;
+                     infoPanel.style.height = currentHeight + 'px';
+                     
+                     // 2. Fade out text
+                     panelInner.classList.add('faded');
+                     
+                     setTimeout(() => {
+                         // 3. Update content while hidden
+                         buildContent();
+                         
+                         // 4. Measure new height
+                         // Temporarily release height constraint to measure (but keep hidden/offscreen if possible)
+                         // Since we are inside a transition, this is tricky. We'll set height to 'auto', measure, then revert.
+                         infoPanel.style.height = 'auto';
+                         const targetHeight = infoPanel.scrollHeight;
+                         
+                         // Snap back to old height (no transition logic here because we want to animate FROM this point)
+                         // But we need to force reflow if we want CSS transition to pick up 'auto' -> 'target' isn't possible directly.
+                         // CSS transitions work best between explicit pixel values.
+                         infoPanel.style.height = currentHeight + 'px';
+                         
+                         // Force reflow
+                         infoPanel.offsetHeight; 
+                         
+                         // 5. Animate to new height
+                         infoPanel.style.height = targetHeight + 'px';
+                         
+                         // 6. Fade in new text
+                         panelInner.classList.remove('faded');
+                         
+                         // 7. Cleanup after transition completes
+                         setTimeout(() => {
+                             infoPanel.style.height = 'auto'; // Release height so it responds to window resize
+                         }, 400); // Matches CSS transition time
+                         
+                     }, 200); // Wait for fade out
+                     
+                } else {
+                    // Initial Open (just slide up)
+                    buildContent();
+                    infoPanel.classList.add('visible');
+                }
+            } else {
+                // If clicked node has no content, hide the panel
+                hideInfoPanel();
+            }
+        }
+
+        function hideInfoPanel() {
+            infoPanel.classList.remove('visible');
+            d3.selectAll('.node path.active').classed('active', false);
+            d3.selectAll('.node rect.leaf-border.active').classed('active', false);
+            d3.selectAll('.radar-pulse.active').classed('active', false);
+            
+            // Reset wrapper state
+            panelInner.classList.remove('faded');
+            infoPanel.style.height = 'auto';
+        }
+        
+        // NEW FUNCTION: Center the node and its children (focus view)
+        function centerNode(source) {
+            const scale = config.isMobile ? 0.9 : 1.2; // Zoom level adjustment for mobile
+            
+            // Calculate target translation to center the node
+            // Formula: Center = Margin + Translation + (NodePos * Scale)
+            // Therefore: Translation = Center - Margin - (NodePos * Scale)
+            
+            const centerX = container.clientWidth / 2;
+            const centerY = container.clientHeight / 2;
+            
+            const x = centerX - config.margin.left - (source.y * scale);
+            const y = centerY - config.margin.top - (source.x * scale);
+
+            svgRoot.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(scale));
+        }
+        
+        // CENTRALIZED CLICK HANDLER to support interactions from graph and breadcrumbs
+        function handleNodeClick(d) {
+            // 1. Visual selection in Graph
+            d3.selectAll('.node path.active').classed('active', false);
+            d3.selectAll('.node rect.leaf-border.active').classed('active', false);
+            d3.selectAll('.radar-pulse').classed('active', false);
+            
+            // We need to select the specific node element based on ID
+            // Since d is the data object, we search by ID
+            const nodeSelection = d3.selectAll('.node').filter(n => n.id === d.id);
+            
+            if (!nodeSelection.empty()) {
+                nodeSelection.select('path').classed('active', true);
+                nodeSelection.select('rect.leaf-border').classed('active', true);
+                nodeSelection.select('.radar-pulse').classed('active', true);
+            }
+
+            // 2. Show Info
+            showInfoPanel(d);
+
+            // 3. Logic: Toggle if it has children (standard behavior) OR just center if it doesn't
+            if (d.children || d._children) {
+                // Check if we need to expand (if currently collapsed)
+                if (d._children) {
+                    d.children = d._children;
+                    d._children = null;
+                    update(d);
+                } 
+            }
+            
+            // Center the node
+            centerNode(d);
+        }
+
+        closePanelBtn.addEventListener('click', hideInfoPanel);
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            // Recalculate center based on current dimensions
+            const scale = config.isMobile ? 0.9 : 0.8;
+            svgRoot.transition().duration(750).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(config.margin.left, height / 2).scale(scale)
+            );
+        });
+
+        let i = 0;
+        let root;
+        const tree = d3.tree().nodeSize([40, config.horizontalSpacing]); 
+
+        root = d3.hierarchy(treeData, function(d) { return d.children; });
+        root.x0 = height / 2;
+        root.y0 = 0;
+
+        // Recursively collapse function
+        function recursiveCollapse(d) {
+            if (d.children) {
+                d._children = d.children;
+                d._children.forEach(recursiveCollapse);
+                d.children = null;
+            }
+        }
+
+        function expand(d) {
+            if (d._children) {
+                d.children = d._children;
+                d._children = null;
+            }
+            if (d.children) {
+                d.children.forEach(expand);
+            }
+        }
+
+        // Initial collapse of the root's children
+        if (root.children) {
+            recursiveCollapse(root);
+        }
+
+        update(root);
+
+        // MODIFIED: Initial Focus on Root Node
+        // 1. Center the root node immediately
+        centerNode(root);
+
+        // 2. Activate the radar pulse on the root node so it stands out on load
+        // Note: D3 binds data 'd' to the element, so we filter by matching the root data object
+        const rootNodeSelection = d3.selectAll('.node').filter(d => d.data.name === "Value Proposition");
+        
+        if (!rootNodeSelection.empty()) {
+            rootNodeSelection.select('path').classed('active', true);
+            rootNodeSelection.select('rect.leaf-border').classed('active', true);
+            rootNodeSelection.select('.radar-pulse').classed('active', true);
+        }
+
+        document.getElementById('expand-btn').addEventListener('click', () => {
+            expand(root);
+            update(root);
+        });
+
+        document.getElementById('collapse-btn').addEventListener('click', () => {
+            if(root.children) {
+                root.children.forEach(recursiveCollapse); 
+            }
+            update(root);
+        });
+        
+        const symbolEqualDiamond = {
+            draw: function(context, size) {
+                const r = Math.sqrt(size / 2); 
+                context.moveTo(0, -r);
+                context.lineTo(r, 0);
+                context.lineTo(0, r);
+                context.lineTo(-r, 0);
+                context.closePath();
+            }
+        };
+
+        const symbolVerticalLine = {
+            draw: function(context, size) {
+                const w = Math.sqrt(size) * 0.4;
+                const h = Math.sqrt(size) * 1.5;
+                context.rect(-w/2, -h/2, w, h);
+            }
+        };
+
+        function getSymbol(d) {
+            switch(d.data.type) {
+                case 'root': return d3.symbolCircle; 
+                case 'level1': return d3.symbolSquare;
+                case 'level2': return symbolEqualDiamond; 
+                case 'level3': return d3.symbolTriangle;
+                case 'level4': return d3.symbolCircle;
+                case 'leaf': 
+                    if (d.data.tableData) return d3.symbolSquare;
+                    return symbolVerticalLine; 
+                default: return d3.symbolCircle;
+            }
+        }
+
+        function update(source) {
+            const treeData = tree(root);
+            const nodes = treeData.descendants();
+            const links = treeData.descendants().slice(1);
+
+            // Responsive Horizontal Spacing
+            nodes.forEach(function(d){ d.y = d.depth * config.horizontalSpacing }); 
+
+            const node = g.selectAll('g.node')
+                .data(nodes, function(d) {return d.id || (d.id = ++i); });
+
+            const nodeEnter = node.enter().append('g')
+                .attr('class', 'node')
+                .attr("transform", function(d) {
+                    return "translate(" + source.y0 + "," + source.x0 + ")";
+                })
+                .on("click", (event, d) => { 
+                    // Interaction Logic from Graph Click
+                    // 1. Toggle Expansion
+                    if (d.children || d._children) {
+                        if (d.children) {
+                            recursiveCollapse(d);
+                        } else {
+                            d.children = d._children;
+                            d._children = null;
+                        }
+                        update(d);
+                    }
+                    
+                    // 2. Visual Update & Focus (Reusing centralized handler for consistent selection state)
+                    handleNodeClick(d);
+                });
+            
+            // RADAR PULSE (Inserted before other elements to be behind)
+            // INCREASED RADIUS to 30 to ensure it is visible outside active strokes
+            nodeEnter.append('circle')
+                .attr('class', 'radar-pulse')
+                .attr('r', 30);
+
+            // Leaf Border
+            nodeEnter.append('rect')
+                .attr('class', 'leaf-border')
+                .attr('rx', 6)
+                .attr('ry', 6);
+
+            // Node Shape
+            nodeEnter.append('path')
+                .attr('class', 'node')
+                // INITIAL STATE: SIZE 0 (Invisible/Tiny) to allow for "Pop" animation
+                .attr('d', d3.symbol().type(d => getSymbol(d)).size(0)) 
+                .style("fill", function(d) {
+                    if (d.data.type === 'leaf') return '#D93900';
+                    return d._children ? getNodeColor(d) : "#fff";
+                })
+                .style("stroke", function(d) { return getNodeColor(d); })
+                .attr('cursor', 'pointer');
+
+            // Text
+            const textNode = nodeEnter.append('text')
+                .attr("dy", ".35em")
+                .attr("x", 13) 
+                .attr("text-anchor", "start") 
+                .style("fill", "#2D2D2D");
+
+            textNode.each(function(d) {
+                const el = d3.select(this);
+                const text = d.data.name;
+                // Only parse brackets for table leaves (Outcomes/KPIs) to keep titles clean
+                if (d.data.tableData === undefined && d.parent && d.parent.data.name === "Outcomes / KPIs" && text.includes('[')) {
+                     el.text(text);
+                } else {
+                    el.text(text);
+                }
+            });
+
+            // Halo for text
+            textNode.clone(true).lower()
+                .attr("stroke", "white")
+                .attr("stroke-width", 3)
+                .style("fill", "none");
+
+            const nodeUpdate = node.merge(nodeEnter);
+
+            // FORCE UPDATE PULSE RADIUS for existing nodes
+            nodeUpdate.select('.radar-pulse')
+                .attr('r', 30);
+
+            nodeUpdate.select('text').each(function(d) {
+                d.textWidth = this.getComputedTextLength();
+            });
+
+            // Update Leaf Border
+            nodeUpdate.select('rect.leaf-border')
+                .attr('opacity', d => (d.data.type === 'leaf' && !d.data.tableData) ? 1 : 0) 
+                .attr('x', 8) 
+                .attr('y', -12) 
+                .attr('width', d => (d.textWidth || 0) + 12) 
+                .attr('height', 24); 
+
+            nodeUpdate.transition()
+                .duration(750)
+                .attr("transform", function(d) { 
+                    return "translate(" + d.y + "," + d.x + ")";
+                });
+
+            // Update Shape with Transition (Grow to Size 200)
+            nodeUpdate.select('path.node')
+                .transition()
+                .duration(750)
+                .attr('d', d3.symbol().type(d => getSymbol(d)).size(200)) 
+                .style("fill", function(d) {
+                    if (d.data.type === 'leaf') return '#D93900';
+                    return d._children ? getNodeColor(d) : "#fff";
+                })
+                .style("stroke", function(d) { return getNodeColor(d); });
+
+            const nodeExit = node.exit().transition()
+                .duration(750)
+                .attr("transform", function(d) {
+                    return "translate(" + source.y + "," + source.x + ")";
+                })
+                .remove();
+
+            // Exit Shape: Shrink to Size 0
+            nodeExit.select('path')
+                .attr('d', d3.symbol().type(d => getSymbol(d)).size(0));
+
+            nodeExit.select('rect').attr('opacity', 0);
+            nodeExit.select('text').style('fill-opacity', 1e-6);
+
+            const link = g.selectAll('path.link')
+                .data(links, function(d) { return d.id; });
+
+            const linkEnter = link.enter().insert('path', "g")
+                .attr("class", "link")
+                // Added 'drawing' class for CSS animation flow
+                .classed("drawing", true) 
+                .attr('d', function(d){
+                    const o = {x: source.x0, y: source.y0, textWidth: source.textWidth || 0};
+                    return diagonal(o, o);
+                })
+                ;
+
+            const linkUpdate = link.merge(linkEnter);
+
+            linkUpdate.transition()
+                .duration(750)
+                .attr('d', function(d){ 
+                    return diagonal(d.parent, d); 
+                });
+
+            const linkExit = link.exit().transition()
+                .duration(750)
+                .attr('d', function(d) {
+                    const o = {x: source.x, y: source.y, textWidth: source.textWidth || 0};
+                    return diagonal(o, o);
+                })
+                .remove();
+
+            nodes.forEach(function(d){
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+
+            function diagonal(s, d) {
+                const sourceOffset = (s.textWidth || 0) + 25; 
+                const sy = s.y + sourceOffset;
+                const sx = s.x;
+                const dy = d.y;
+                const dx = d.x;
+
+                return `M ${sy} ${sx}
+                        C ${(sy + dy) / 2} ${sx},
+                          ${(sy + dy) / 2} ${dx},
+                          ${dy} ${dx}`;
+            }
+        }
+
+        function getNodeColor(d) {
+            switch(d.data.type) {
+                case 'root': return '#2D2D2D'; 
+                case 'level1': return '#D93900'; 
+                case 'level2': return '#DB536A'; 
+                case 'level3': return '#EB8C00'; 
+                case 'level4': return '#7D7D7D'; 
+                case 'leaf': return '#D93900'; 
+                default: return '#555';
+            }
+        }
+        
+        window.addEventListener('resize', () => {
+             // Dynamic Resize Logic
+             config = getDimensions();
+             
+             width = container.clientWidth - config.margin.left - config.margin.right;
+             height = container.clientHeight - config.margin.top - config.margin.bottom;
+             
+             // Update SVG container
+             svg.attr("width", "100%").attr("height", "100%");
+             
+             // Update G transform for margin changes
+             // Note: In D3, updating the transform of an existing 'g' requires selection.
+             svg.transition().duration(750).attr("transform", "translate(" + config.margin.left + "," + config.margin.top + ")");
+             
+             // Update Tree Layout Size
+             tree.nodeSize([40, config.horizontalSpacing]);
+             
+             update(root);
+        });
+
+    </script>
+</body>
+</html>
